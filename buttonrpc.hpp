@@ -174,7 +174,7 @@ private:
 	// 类成员函数指针
 	template<typename R, typename C, typename S, typename... Params>
 	void callproxy_(R(C::* func)(Params...), S* s, Serializer* pr, const char* data, int len) {
-
+		//std::tuple 元组; std::decay 退化类型的修饰
 		using args_type = std::tuple<typename std::decay<Params>::type...>;
 
 		Serializer ds(StreamBuffer(data, len));
@@ -233,6 +233,7 @@ inline buttonrpc::~buttonrpc(){
 inline void buttonrpc::as_client( std::string ip, int port )
 {
 	m_role = RPC_CLIENT;
+	//std::unique_ptr<T,Deleter>  Deleter为析构器
 	m_socket = std::unique_ptr<zmq::socket_t, std::function<void(zmq::socket_t*)>>(new zmq::socket_t(m_context, ZMQ_REQ), [](zmq::socket_t* sock){ sock->close(); delete sock; sock =nullptr;});
 	ostringstream os;
 	os << "tcp://" << ip << ":" << port;
@@ -242,10 +243,13 @@ inline void buttonrpc::as_client( std::string ip, int port )
 inline void buttonrpc::as_server( int port )
 {
 	m_role = RPC_SERVER;
+	//std::unique_ptr<T,Deleter>  Deleter为析构器
 	m_socket = std::unique_ptr<zmq::socket_t, std::function<void(zmq::socket_t*)>>(new zmq::socket_t(m_context, ZMQ_REP), [](zmq::socket_t* sock){ sock->close(); delete sock; sock =nullptr;});
 	ostringstream os;
 	os << "tcp://*:" << port;
+	//绑定端口号
 	m_socket->bind (os.str());
+	//超出该函数作用域，m_socket会被析构？
 }
 
 inline void buttonrpc::send( zmq::message_t& data )
@@ -299,18 +303,23 @@ inline Serializer* buttonrpc::call_(std::string name, const char* data, int len)
 		(*ds) << value_t<int>::msg_type("function not bind: " + name);
 		return ds;
 	}
+	//获取绑定的函数
 	auto fun = m_handlers[name];
+	//函数调用
 	fun(ds, data, len);
 	ds->reset();
 	return ds;
 }
 
+//绑定普通函数
 template<typename F>
 inline void buttonrpc::bind( std::string name, F func )
 {
+	//m_handlers是std::map<std::string, std::function<void(Serializer*, const char*, int)>>
 	m_handlers[name] = std::bind(&buttonrpc::callproxy<F>, this, func, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 }
 
+//绑定成员函数  fun是成员函数  s是对象指针
 template<typename F, typename S>
 inline void buttonrpc::bind(std::string name, F func, S* s)
 {

@@ -78,6 +78,7 @@ PersonInfo foo_5(PersonInfo d,  int weigth)
 int main()
 {
 	buttonrpc server;
+	//绑定端口号
 	server.as_server(5555);
 
 	server.bind("foo_1", foo_1);
