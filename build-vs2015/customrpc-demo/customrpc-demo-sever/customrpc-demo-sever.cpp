@@ -3,26 +3,28 @@
 
 #include "stdafx.h"
 #include <zmq.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include <windows.h>
+#include <iostream>
 
 int main()
 {
-	printf("Connecting to hello world server...\n");
+	//  Socket to talk to clients
 	void *context = zmq_ctx_new();
-	void *requester = zmq_socket(context, ZMQ_REQ);
-	zmq_connect(requester, "tcp://localhost:5555");
+	void *responder = zmq_socket(context, ZMQ_REP);
+	int rc = zmq_bind(responder, "tcp://*:5555");
+	assert(rc == 0);
 
-	int request_nbr;
-	for (request_nbr = 0; request_nbr != 10; request_nbr++) {
+	while (1) {
 		char buffer[10];
-		printf("Sending Hello %d...\n", request_nbr);
-		zmq_send(requester, "Hello", 5, 0);
-		zmq_recv(requester, buffer, 10, 0);
-		printf("Received World %d\n", request_nbr);
+		zmq_recv(responder, buffer, 10, 0);
+		printf("Received Hello\n");
+		Sleep(1);          //  Do some 'work'
+		zmq_send(responder, "World", 5, 0);
 	}
-	zmq_close(requester);
-	zmq_ctx_destroy(context);
+	
 	return 0;
 }
 
